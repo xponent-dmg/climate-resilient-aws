@@ -8,19 +8,38 @@ function getNav(role: string | null): NavItem[] {
   if (role === "Admin") return [
     { key: "overview", label: "Overview" },
     { key: "patients", label: "Patients" },
+    { key: "capacity", label: "Capacity" },
     { key: "resources", label: "Resources" },
     { key: "alerts", label: "Alerts" },
+    { key: "tips", label: "Health Tips" },
+    { key: "calendar", label: "Risk Calendar" },
+    { key: "notes", label: "Team Notes" },
+    { key: "family", label: "Family Tips" },
+    { key: "community", label: "Community" },
+    { key: "readiness", label: "Readiness" },
+    { key: "badges", label: "Badges" },
+    { key: "share", label: "Share" },
     { key: "reports", label: "Reports" },
+    { key: "feedback", label: "Feedback" },
+    { key: "help", label: "Help" },
     { key: "settings", label: "Settings" },
   ];
   if (role === "Clinician") return [
     { key: "overview", label: "Overview" },
     { key: "patients", label: "Patients" },
     { key: "alerts", label: "Alerts" },
+    { key: "tips", label: "Health Tips" },
+    { key: "calendar", label: "Risk Calendar" },
+    { key: "notes", label: "Team Notes" },
+    { key: "family", label: "Family Tips" },
+    { key: "community", label: "Community" },
   ];
   if (role === "Analyst") return [
     { key: "overview", label: "Overview" },
     { key: "reports", label: "Reports" },
+    { key: "readiness", label: "Readiness" },
+    { key: "share", label: "Share" },
+    { key: "badges", label: "Badges" },
   ];
   return [{ key: "overview", label: "Overview" }];
 }

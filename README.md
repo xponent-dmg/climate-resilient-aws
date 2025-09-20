@@ -1,212 +1,27 @@
-Climate-Resilient Healthcare System MVP
-This project is a Minimum Viable Product (MVP) for an AI-driven, cloud-native Climate-Resilient Healthcare System. It integrates climate and health data, predicts heat stress risks, sends alerts, and displays results on a dashboard. Built with AWS services, Python (backend/ML), and React/Next.js (frontend), it’s designed for simplicity, security, and scalability. This README guides you through setup, local testing, and AWS deployment using the AWS Management Console Proxy (MCP) and Cursor (or any IDE).
-Features
+# Climate-Resilient Healthcare System MVP
 
-Data Ingestion: Pulls sample climate/health data into Amazon S3.
-ETL: Cleans data with AWS Glue, stores in RDS PostgreSQL.
-Prediction: Uses SageMaker to predict heat stress risks.
-Alerts: Sends notifications via SNS when risks are high.
-API: Exposes predictions via API Gateway and Lambda.
-Dashboard: React/Next.js UI to view risks and trends.
-Security: IAM roles and Secrets Manager for secure access.
+## Complete System Overview
 
-Tech Stack
+The Climate-Resilient Healthcare System MVP is an AI-driven, cloud-native platform that predicts and responds to climate-related health risks across India. It integrates climate, air quality, and health data to forecast multiple risks (heat stress, floods, respiratory issues, vector-borne diseases), send alerts, and optimize healthcare resources.
 
-Backend: Python (boto3, pandas, scikit-learn)
-ML: XGBoost on Amazon SageMaker
-Frontend: React/Next.js, Chart.js
-Database: Amazon RDS (PostgreSQL)
-AWS Services: EC2, S3, RDS, API Gateway, Lambda, SageMaker, IAM, Secrets Manager, SNS, Glue
-Tools: AWS MCP, Cursor (or VSCode), Node.js
+### Key Features
 
-Prerequisites
+- **Multi-risk Prediction**: Monitors heat stress, floods, respiratory issues, vector-borne diseases
+- **ML-Powered Capacity Planning**: Predicts hospital bed and staff needs based on air quality and climate data
+- **Role-Based Access**: Admin, Clinician, and Analyst views
+- **Interactive Dashboard**: Risk scores, charts, maps, capacity management, and health tips
+- **Real-time Alerts**: Notifications when risk thresholds are exceeded
+- **Resource Optimization**: Suggests hospital capacity adjustments based on predicted risks
 
-AWS account (free tier recommended)
-AWS MCP access (via Console or CLI with MCP setup)
-Python 3.8+ (python --version)
-Node.js 16+ (node --version)
-Git (git --version)
-Sample data: Download a NOAA CSV (e.g., daily temps from https://www.ncei.noaa.gov/data/global-summary-of-the-day/archive/)
+## Tech Stack
 
-Setup Instructions
-Follow these steps to set up the project using AWS MCP and Cursor.
-1. Clone the Repository
-git clone <your-repo-url>
-cd climate-resilient-healthcare
+- **Backend**: Python (pandas, sqlalchemy, xgboost, scikit-learn, FastAPI)
+- **ML**: XGBoost models for risk classification and capacity prediction
+- **Frontend**: React/Next.js (TypeScript), Chart.js, Leaflet maps
+- **Database**: SQLite (local), RDS PostgreSQL (AWS)
+- **AWS Services**: EC2, S3, RDS, API Gateway, Lambda, SageMaker, IAM, Secrets Manager, SNS, Glue
 
-2. Local Development
-Frontend (Day 1)
-
-Open frontend/ in Cursor.
-Install dependencies:cd frontend
-npm install
-
-
-Run locally:npm run dev
-
-
-Build dashboard (pages/index.js):
-Shows risk score, temp chart (Chart.js).
-
-
-Deploy to EC2:
-SSH to EC2, install Node.js, copy frontend/, run npm run build && npm start.
-
-
-
-Backend (Day 2)
-
-Open backend/ in Cursor.
-Install dependencies:pip install boto3 pandas scikit-learn xgboost sqlalchemy psycopg2-binary requests
-
-
-Ingest Data (ingest.py):
-Lambda to fetch NOAA CSV and upload to S3.
-
-
-ETL (etl.py):
-Glue job to clean data and write to RDS.
-Trigger via Lambda (trigger_etl.py).
-
-
-ML (ml/train.py):
-Trains XGBoost model on RDS data, deploys to SageMaker.
-Run in SageMaker Notebook:python ml/train.py
-
-
-
-
-API & Alerts (api.py):
-Lambda to call SageMaker, trigger SNS if risk > 0.7.
-
-
-
-3. AWS Setup via MCP (Day 4)
-Use AWS Console with MCP for simplicity.
-IAM (Security)
-
-In Console (via MCP):
-Go to IAM > Roles > Create Role.
-Create ClimateAdmin role with trust policy for Lambda:{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"Service":"lambda.amazonaws.com"},"Action":"sts:AssumeRole"}]}
-
-
-Attach policies: AmazonS3FullAccess, AmazonRDSFullAccess.
-Create Clinician and Analyst roles with read-only policies (AmazonS3ReadOnlyAccess, AmazonRDSReadOnlyAccess).
-
-
-Enable MFA: IAM > Users > Security credentials.
-
-Secrets Manager
-
-In Console: Secrets Manager > Store a new secret.
-Add a fake NOAA API key: {"key":"abc123"}, name it noaa-api-key.
-
-
-Test access with Python (boto3):import boto3
-client = boto3.client('secretsmanager')
-secret = client.get_secret_value(SecretId='noaa-api-key')['SecretString']
-print(secret)
-
-
-
-S3
-
-In Console: S3 > Create Bucket.
-Create climate-health-raw and climate-health-processed.
-
-
-Verify buckets in Console.
-
-RDS (PostgreSQL)
-
-In Console: RDS > Create Database.
-Choose PostgreSQL, db.t3.micro, 20GB storage, public access, username admin, password yourpassword.
-Note the endpoint after creation (~10 mins).
-
-
-Create tables using pgAdmin or SQL:CREATE TABLE climate (date DATE, region VARCHAR, temp FLOAT, humidity FLOAT);
-CREATE TABLE health (date DATE, region VARCHAR, heat_cases INT);
-
-
-
-Glue
-
-In Console: Glue > Databases > Add Database > Name: climate_db.
-Crawler: climate-crawler, target s3://climate-health-raw, role ClimateAdmin.
-Run crawler after data ingestion.
-
-SNS
-
-In Console: SNS > Create Topic > Name: climate-alerts.
-Subscribe your email: SNS > Subscriptions > Create Subscription > Protocol: Email, Endpoint: your.email@example.com.
-Confirm subscription via email.
-
-Lambda
-
-In Console: Lambda > Create Function > Name: IngestData, Runtime: Python 3.8, Role: ClimateAdmin.
-Upload ingest.py (zipped) to fetch NOAA CSV to S3.
-Test: Trigger function manually.
-
-API Gateway
-
-In Console: API Gateway > Create API > REST API > Name: ClimateAPI.
-Create resource /predict, method GET, integrate with Lambda (api.py).
-Deploy API to a stage (e.g., prod).
-
-SageMaker
-
-In Console: SageMaker > Notebook Instances > Create > ml.t2.medium.
-Use ml/train.py to train/deploy model (see Backend Setup).
-Deploy endpoint: heat-risk-endpoint.
-
-EC2
-
-In Console: EC2 > Instances > Launch Instance > t2.micro, select AMI (e.g., Amazon Linux 2), create key pair.
-SSH to instance for frontend hosting.
-
-4. Deployment (Day 5)
-
-Backend: Deploy Lambdas, Glue jobs, SageMaker endpoint via Console.
-Frontend: SSH to EC2, install Node.js, copy frontend/, run npm run build && npm start.
-
-5. Testing
-
-Upload sample CSV to S3 (s3://climate-health-raw).
-Trigger IngestData Lambda via Console.
-Run Glue crawler via Console.
-Trigger ETL Lambda.
-Check RDS for clean data.
-Run ml/train.py to deploy SageMaker endpoint.
-Call API (/predict) via curl:curl <api-gateway-url>/predict
-
-
-Verify SNS email for high-risk alerts.
-View dashboard at http://<ec2-ip>:3000.
-
-6. Files
-
-backend/ingest.py: Lambda to ingest data to S3.
-backend/etl.py: Glue ETL job.
-backend/trigger_etl.py: ETL trigger Lambda.
-backend/ml/train.py: SageMaker model.
-backend/api.py: API/alert Lambda.
-frontend/pages/index.js: Dashboard UI.
-
-7. Notes
-
-Data: Use NOAA CSV, fake health data (cases = temp * 0.3).
-Cost: Stick to free tier. Monitor with AWS Budgets ($10 alert).
-Debug: Check CloudWatch logs for Lambda/Glue.
-Scaling: MVP focuses on one region (e.g., India). Expand later.
-
-8. Troubleshooting
-
-Lambda fails? Check IAM permissions in CloudWatch.
-RDS not connecting? Verify security group allows port 5432.
-SageMaker issues? Ensure data format matches model input.
-
-
-Built with 💪 by [Your Name] in one week, September 2025. Vibe on!
+## Local Development
 
 ### Frontend (Day 1 – Sept 17, 2025)
 
@@ -232,11 +47,12 @@ npm run dev
 
 - Admin: `admin` / `admin123`
 - Clinician: `clinician` / `clin123`
+- Analyst: `analyst` / `anal123`
 
 #### File highlights
 
-- `frontend/src/app/login/page.tsx`: login form and session init
-- `frontend/src/app/page.tsx`: protected dashboard route
+- `frontend/src/pages/login.tsx`: login form and session init
+- `frontend/src/pages/index.tsx`: protected dashboard route
 - `frontend/src/context/AuthContext.tsx`: localStorage-backed mock session and RBAC
 - `frontend/src/components/Dashboard.tsx`: header, risk, chart, suggestion (admin only)
 - `frontend/src/components/TemperatureChart.tsx`: Chart.js line chart
@@ -259,15 +75,119 @@ Generate mobile-responsive React/Next.js dashboard with mock authentication (log
 - Replace mock call with POST `/predict` to API Gateway (IAM auth)
 - Handle 401/403 with sign-out and re-auth flow
 
-### Frontend (Enhanced – Sept 17, 2025)
+### Backend (Day 2 – Local Ingestion, ETL, API, Alerts)
 
-- Role-specific navigation (Admin full, Clinician patient-focused, Analyst analytics-focused)
-- Features: login (mock), RBAC, risk score, temp/risk charts with zoom, patient list (sorting, notes for Admin), resource suggestions, alerts, CSV report download, Leaflet risk map for Delhi, light/dark toggle (default light)
-- Accessibility and performance: ARIA labels, keyboard-friendly nav, lazy map, memoized charts
+- Location: `backend/`
+- Tech: Python (pandas, sqlalchemy, requests), SQLite (mock RDS)
+- Flow: ingest CSV → ETL (clean + mock health) → API handler (risk + alert)
 
-Demo users:
-- Admin: `admin` / `admin123`
-- Clinician: `clinician` / `clin123`
-- Analyst: `analyst` / `anal123`
+Run locally:
+```bash
+cd backend
+# create venv and install deps (already done if you ran the task)
+python -m venv .venv
+./.venv/Scripts/pip install -U pip pandas sqlalchemy requests scikit-learn xgboost
+# run pipeline
+./.venv/Scripts/python ingest.py
+./.venv/Scripts/python trigger_etl.py
+./.venv/Scripts/python api.py
+```
 
-API prep (Day 5): axios placeholders for `/predict` and `/reports` with error handling; swap in IAM auth.
+Expected API output (example):
+```json
+{"statusCode":200,"body":"{\"risk\":0.67,\"temps\":[{\"label\":\"Day 1\",\"value\":35.0},{\"label\":\"Day 2\",\"value\":34.0}],\"region\":\"Delhi\"}"}
+```
+
+Files:
+- `backend/ingest.py`: copy CSV from `data/` to `raw/`
+- `backend/etl.py`: clean, feature engineer, mock health, write `local.db`
+- `backend/trigger_etl.py`: simple trigger wrapper
+- `backend/api.py`: mock Lambda-style handler with risk and alert print
+
+MCP prompt used:
+Generate Python scripts for local data ingestion, ETL with mock health generation, mock API with alerts, using pandas/sqlalchemy for SQLite, compliant with AWS best practices for future Lambda/Glue deployment.
+
+### End-to-End (Local Integration)
+
+- Backend: `cd backend && ./.venv/Scripts/python server.py` (serves on http://localhost:8000)
+- Frontend: `cd frontend && npm run dev` (open http://localhost:3000)
+- Config: `NEXT_PUBLIC_API_BASE` defaults to `http://localhost:8000`. Create `frontend/.env.local` to override.
+- In the dashboard Overview: use the Mock Predict and Mock Report buttons to call the backend.
+
+### Frontend Enhancements (Connected to Local Backend)
+
+- Live risk fetch from backend `/predict` and CSV reports from `/reports`
+- Admin: Capacity manager (beds/staff) with readiness bar and suggestions
+- Tips & Badges: dynamic health tips and fun badges based on risk
+- Family & Community: guidance for households and community actions
+- Risk Calendar: next 7 days colored blocks
+- Team Notes: chat-like notes for alerts
+- Readiness & Share: checklist and share button
+- Feedback & Help: quick feedback form and simple guide
+
+Test results: Risk predicted and capacity updated—vibes are high!
+
+MCP Knowledge Server prompt used:
+Generate ways to connect React frontend to local Python backend with fun features like risk prediction and hospital capacity updates, plus more ideas for health tips and community help, all in a clean white professional style.
+
+### Multi-Risk ML System
+
+- **Data Sources**: 
+  - Air quality data (`backend/data/airquality.csv`) - SO2, NO2, PM10, PM2.5 across Indian cities
+  - Temperature data (`backend/data/Mean_Seasonal_Temp_IMD-1901_to_2019_0.csv`) - Seasonal temperature trends
+  - Dengue data (`backend/data/dengue.csv`) - Vector-borne disease cases by state
+
+- **ML Models**:
+  - **Risk Classification**: XGBoost models for predicting high-risk conditions (heat, flood, respiratory, vector-borne, drought, storm, air pollution)
+  - **Capacity Prediction**: XGBoost regression models for hospital beds and staff needs based on air quality and seasonal factors
+
+- **API Endpoints**:
+  - `/predict`: Returns multi-risk scores and ML predictions
+  - `/capacity`: Gets/sets current capacity values
+  - `/capacity/predict`: Predicts capacity needs based on environmental factors
+  - `/capacity/train`: Trains capacity models using air quality data
+  - `/reports`: Generates CSV reports of risk data
+
+- **Frontend Integration**:
+  - Multi-risk cards showing heat, flood, respiratory, vector-borne risks
+  - ML Outlook showing probability of high-risk conditions
+  - Capacity Predictor for estimating resource needs
+  - Dynamic tips and guidance based on risk levels
+
+## Running the Complete System
+
+1. Start the backend server:
+```bash
+cd backend
+./.venv/Scripts/python server.py
+```
+
+2. Start the frontend:
+```bash
+cd frontend
+npm run dev
+```
+
+3. Open http://localhost:3000 and log in with demo credentials
+4. Train the capacity model:
+   - Go to Capacity (Admin only)
+   - Click "Train Model" in the Capacity Predictor
+   - Use the predictor to estimate needs based on air quality and season
+
+5. Explore the dashboard:
+   - Click "Refresh Data" to fetch latest risks and ML predictions
+   - Try different sections in the sidebar
+   - Test role-specific features by logging in as different users
+
+## AWS Deployment (Day 4-5)
+
+Prepared for deployment to AWS with:
+- S3 for raw data storage
+- RDS PostgreSQL for processed data
+- Lambda for API handlers
+- API Gateway for endpoints
+- SageMaker for ML model hosting
+- SNS for alerts
+- IAM and Secrets Manager for security
+
+## Built with 💪 by [Your Name] in one week, September 2025. Vibe on!

@@ -9,14 +9,14 @@ Day 1 (Sept 17): Frontend Dashboard (Local) — Completed
 - Tested locally at http://localhost:3000
 - Committed: "Day 1: Local dashboard with mock auth"
 
-Day 2 (Sept 18): Local Backend (Ingestion, ETL, API, Alerts)
+Day 2 (Sept 18): Local Backend — Completed
 
- Install Python dependencies: pip install boto3 pandas etc.
- Write ingest.py: Load NOAA CSV locally.
- Write etl.py: Clean, generate mock health, save to SQLite.
- Write api.py: Mock API with alerts.
- Test locally with fake data.
- Commit: git commit -m "Day 2: Local backend"
+- Ingestion: copied NOAA CSV to raw/
+- ETL: cleaned data, added lagged_temp, generated mock health (heat_cases = temp * 0.3)
+- Storage: wrote climate/health tables to SQLite local.db
+- API: mock handler computes risk, prints alert for high risk
+- Tested locally end-to-end
+- Committed: "Local backend complete—ingestion, ETL, API, alerts vibing!"
 
 Day 3 (Sept 19): ML Model (Local + SageMaker Prep)
 
@@ -55,3 +55,7 @@ Enhanced Frontend — Completed
 - Alerts list, resource suggestions, report CSV download
 - Leaflet risk map (Delhi), light/dark theme (default light)
 - Error handling with banner and axios prep for `/predict` & `/reports`
+
+Enhanced Frontend Connected — Completed
+- Connected to backend /predict and /reports
+- Added capacity manager, tips, calendar, notes, family/community, readiness, badges, share, feedback, help

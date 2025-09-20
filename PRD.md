@@ -122,3 +122,11 @@ Day 5: Frontend deployment, testing.
 
 
 Author: [Your Name], Sept 2025Vibe: Build fast, keep it simple, save lives!
+
+Status update (Local readiness):
+- Module 2 (Ingestion & Storage): Local ingestion of NOAA CSV and SQLite storage completed.
+- Module 3 (ETL & Processing): Cleaning, lagged features, mock health generation complete.
+- Module 5 (API & Integration): Mock API handler returns risk and temps for dashboard.
+- Module 6 (Alerting): Console alert emitted on high risk; SNS to be wired on Day 4.
+
+Module 7 Update: Dashboard now integrates with local backend for live risk and reports. Admin tools include capacity updates with readiness bar; clinicians see patient/tips focus; analysts focus on reports and readiness metrics. Additional sections: tips, calendar, notes, family/community guidance, badges, share, feedback, and help.
