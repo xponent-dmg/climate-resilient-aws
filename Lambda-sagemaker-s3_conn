@@ -1,0 +1,265 @@
+
+⚙️ GOAL
+
+You want to make sure your frontend → backend (Lambda + API Gateway) → ML models (SageMaker + S3) are all correctly connected.
+
+I’ll explain step-by-step how that flow works, what to check, and how to connect them.
+
+
+---
+
+🧭 Step-by-Step Connection Guide
+
+STEP 1️⃣ – Understand the Pipeline
+
+Let’s visualize the data flow you’re working with:
+
+[Frontend on Vercel]
+       ↓ (HTTPS)
+[API Gateway]  ← public entry point
+       ↓
+[AWS Lambda (FastAPI)]
+       ↓
+[SageMaker Endpoint] → ML Prediction
+       ↓
+[S3 Bucket] → fetches/stores model data or results
+       ↓
+[RDS (PostgreSQL)] → persistent app data
+
+So in short:
+
+Your Lambda acts as the “middleman” — it receives API requests from your frontend and calls SageMaker for ML predictions.
+
+S3 stores your ML model files and raw/processed data.
+
+RDS stores user, auth, or result data.
+
+
+
+---
+
+STEP 2️⃣ – Ensure AWS Resources Are Deployed
+
+✅ You or your teammate should confirm that these AWS resources exist:
+
+Service	Purpose	What to Verify
+
+S3 Buckets	Store model files and raw/processed data	You should see buckets like climate-health-models, climate-health-raw-data, etc.
+SageMaker Endpoint	Host trained ML models	In SageMaker Console → Inference → Endpoints → You should see one with status InService.
+Lambda Function	Handles API logic	Function is deployed (e.g., climate-resilient-backend), has correct role & permissions.
+API Gateway	Public API for frontend	There should be a deployed API mapping your routes to the Lambda.
+RDS Instance	Database	PostgreSQL instance running (optional, if you’re not using database parts).
+
+
+
+---
+
+STEP 3️⃣ – Connect Lambda to SageMaker
+
+Your lambda_handler.py or predictions.py should contain something like this:
+
+import boto3
+import json
+
+sagemaker = boto3.client("sagemaker-runtime")
+
+def get_prediction(input_data):
+    response = sagemaker.invoke_endpoint(
+        EndpointName="climate-health-model",  # 👈 your SageMaker endpoint name
+        Body=json.dumps(input_data),
+        ContentType="application/json",
+    )
+    result = json.loads(response["Body"].read().decode())
+    return result
+
+🔍 What to check:
+
+The EndpointName matches exactly with your SageMaker endpoint name.
+
+Your Lambda function has IAM permissions:
+
+sagemaker:InvokeEndpoint
+
+s3:GetObject, s3:PutObject
+
+
+SageMaker endpoint is in the same region as the Lambda.
+
+
+✅ Testing:
+In AWS Console → Lambda → Test → paste this in as payload:
+
+{
+  "temperature": 31,
+  "humidity": 78,
+  "rainfall": 120
+}
+
+If the function runs successfully, you’ll see a prediction output.
+
+
+---
+
+STEP 4️⃣ – Connect Lambda to S3
+
+If the ML models are stored in S3 or results are logged there, you need:
+
+import boto3
+import io, pandas as pd
+
+s3 = boto3.client("s3")
+
+def load_model_from_s3(bucket, key):
+    obj = s3.get_object(Bucket=bucket, Key=key)
+    return pickle.loads(obj["Body"].read())
+
+def save_results_to_s3(df, bucket, key):
+    csv_buffer = io.StringIO()
+    df.to_csv(csv_buffer)
+    s3.put_object(Bucket=bucket, Key=key, Body=csv_buffer.getvalue())
+
+✅ What to check:
+
+You have S3 bucket names defined as environment variables:
+
+RAW_BUCKET=climate-health-raw-data
+PROCESSED_BUCKET=climate-health-processed-data
+MODELS_BUCKET=climate-health-models
+
+IAM permissions include:
+
+s3:GetObject
+
+s3:PutObject
+
+
+
+✅ Test:
+Run a Lambda test event that reads from S3 and prints output.
+If it errors with AccessDenied, fix IAM roles.
+
+
+---
+
+STEP 5️⃣ – Connect Frontend to Lambda via API Gateway
+
+In your frontend (Vercel), set this env variable:
+
+NEXT_PUBLIC_API_URL=https://<your-api-id>.execute-api.<region>.amazonaws.com/prod
+
+In your frontend code:
+
+const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/predictions`, {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ temperature, humidity, rainfall }),
+});
+
+✅ Check in Browser DevTools (Network tab):
+
+Request URL points to your API Gateway domain.
+
+Response status is 200 with prediction data.
+
+If you see CORS errors → fix by adding:
+
+from fastapi.middleware.cors import CORSMiddleware
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # or your frontend domain
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+
+---
+
+STEP 6️⃣ – Verify Permissions (IAM)
+
+Make sure the Lambda’s execution role includes:
+
+{
+  "Effect": "Allow",
+  "Action": [
+    "s3:GetObject",
+    "s3:PutObject",
+    "sagemaker:InvokeEndpoint",
+    "rds:*",
+    "secretsmanager:GetSecretValue"
+  ],
+  "Resource": "*"
+}
+
+Otherwise, the function might silently fail when trying to reach S3 or SageMaker.
+
+
+---
+
+STEP 7️⃣ – Connect Database (if using RDS)
+
+In your database_aws.py, the connection string should use the RDS endpoint:
+
+SQLALCHEMY_DATABASE_URL = "postgresql://username:password@<rds-endpoint>:5432/climate_health"
+
+✅ Store credentials in AWS Secrets Manager, not in plain text.
+Retrieve them in code like:
+
+import boto3, json
+
+secrets = boto3.client('secretsmanager')
+secret = secrets.get_secret_value(SecretId='ClimateHealthDB')
+creds = json.loads(secret['SecretString'])
+
+
+---
+
+STEP 8️⃣ – Final Integration Checklist
+
+Layer	Status Check	How
+
+Frontend → API Gateway	✅ Reachable?	Open the API URL in browser
+Lambda → SageMaker	✅ Responds to invoke?	CloudWatch logs show inference success
+Lambda → S3	✅ Can read/write?	Upload/download test
+Lambda → RDS	✅ Connected?	Check for connection errors in logs
+IAM Roles	✅ All permissions?	Verify via AWS Console
+Environment Variables	✅ All configured?	Check in Lambda > Configuration > Environment Variables
+
+
+
+---
+
+💬 Optional — Debugging Tips
+
+Use CloudWatch Logs for Lambda → see if model invocation fails.
+
+Check SageMaker Endpoint Logs → make sure it’s returning a response.
+
+If the model is large and Lambda times out → either increase timeout or shift to SageMaker-only inference.
+
+
+
+---
+
+🧩 TL;DR Summary
+
+To make your whole system work:
+
+1. ✅ Make sure S3, Lambda, API Gateway, SageMaker, and RDS all exist and are in the same region.
+
+
+2. ✅ Update Lambda’s code to call SageMaker endpoints, not local models.
+
+
+3. ✅ Give Lambda IAM permissions for S3 + SageMaker + Secrets Manager.
+
+
+4. ✅ Update your frontend to point to API Gateway URL.
+
+
+5. ✅ Check logs for missing model files or permission issues.
+
+
+
+
